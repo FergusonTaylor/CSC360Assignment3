@@ -42,11 +42,99 @@ void GetFileName(char* fileName,char* rootEntry)
     fileName[i+j+1] = '\0';
     return;
 }
+unsigned int LittleEndianBytesToInt(unsigned char* bytes, int length)
+{
+    unsigned int powerOf2 = 1;
+    unsigned int finalInt = 0;
+    int i;
+    for( i = 0; i < length; i++)
+    {
+        finalInt += powerOf2*bytes[i];
+        powerOf2 = powerOf2*256;
+    }
+    return finalInt;
+}
+int GetFileSize( char* rootEntry)
+{
+    int fileSize;
+    unsigned char fileSizeBytes[4];
+    int i;
+    for(i = 0 ; i < 4; i++)
+    {
+        fileSizeBytes[i] = rootEntry[28 +i];
+    }
+    fileSize = LittleEndianBytesToInt(fileSizeBytes,4);
+    return fileSize;
+}
+void CopyBytes(char* dest,char* source, int size, int offset)
+{
+    int i;
+    for(i = 0; i < size; i++)
+    {
+        dest[i] = source[i + offset];
+    }
+}
+void GetCreateDate(char* creationDate,char* rootEntry)
+{
+    int year;
+    int month;
+    int day;
+
+    unsigned char yearBytes[1];
+    unsigned char monthBytes[2];
+    unsigned char dayBytes[1];
+    CopyBytes(yearBytes, rootEntry, 1, 17);
+    CopyBytes(monthBytes, rootEntry, 2, 16); 
+    CopyBytes(dayBytes, rootEntry, 1, 16); 
+
+    year = (yearBytes[0] >> 1) +1980;
+    month = (monthBytes[1] & 0x01)*8 + (monthBytes[0] >> 5);
+    day = (dayBytes[0] & 0x1F);
+
+    char strYear[8];
+    char strMonth[8];
+    char strDay[8];
+
+    sprintf(strYear, "%d", year);
+    sprintf(strMonth, "%02d", month);
+    sprintf(strDay, "%02d", day);
+
+    creationDate[0] = '\0';
+    strcat(creationDate,strYear);
+    strcat(creationDate,"-");
+    strcat(creationDate,strMonth);
+    strcat(creationDate,"-");
+    strcat(creationDate,strDay);
+}
+void GetCreateTime(char* creationTime,char* rootEntry)
+{
+    int hour;
+    int min;
+
+    unsigned char hourBytes[1];
+    unsigned char minBytes[2];
+    CopyBytes(hourBytes, rootEntry, 1, 15);
+    CopyBytes(minBytes, rootEntry, 2, 14);
+
+    hour = (hourBytes[0] >> 3);
+    min = (minBytes[0] >>5 ) + (minBytes[1] & 0x07)*8;
+    char strHour[8];
+    char strMin[8];
+
+    sprintf(strHour, "%02d", hour);
+    sprintf(strMin, "%02d", min);
+
+    creationTime[0] = '\0';
+    strcat(creationTime,strHour);
+    strcat(creationTime,":");
+    strcat(creationTime,strMin);
+    return;
+}
 int main(int argc, char *argv[])
 {
 
     char fileType;
-    char fileSize[11];
+    int fileSize;
     char fileName[21];
     char creationDate[32];
     char creationTime[32];
@@ -74,9 +162,12 @@ int main(int argc, char *argv[])
             i++;
             continue;
         }
-        GetFileName(fileName, rootEntry); 
+        fileSize = GetFileSize(rootEntry);
+        GetFileName(fileName, rootEntry);
+        GetCreateDate(creationDate, rootEntry);
+        GetCreateTime(creationTime, rootEntry);
         i++;
-        printf("%c %10s %20s %s %s\n", fileType, fileSize, fileName, creationDate,creationTime);
+        printf("%c %10d %20s %s %s\n", fileType, fileSize, fileName, creationDate,creationTime);
     }
     fclose(fileptr);
     

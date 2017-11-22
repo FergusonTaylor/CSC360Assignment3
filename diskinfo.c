@@ -6,10 +6,10 @@ void ReadXBytes(int offset,int numberToRead, FILE* fileptr, char* readInto)
     fseek(fileptr, offset, SEEK_SET);
     fread(readInto,1 ,numberToRead,fileptr);
 }
-int LittleEndianBytesToInt(char* bytes, int length)
+unsigned int LittleEndianBytesToInt(unsigned char* bytes, int length)
 {
-    int powerOf2 = 1;
-    int finalInt = 0;
+    unsigned int powerOf2 = 1;
+    unsigned int finalInt = 0;
     int i;
     for( i = 0; i < length; i++)
     {
@@ -77,12 +77,10 @@ void GetVolumeLabelFromRoot(FILE *fileptr, char *diskLabel)
         fread(rootEntry,1 ,32,fileptr);
 
         attr = rootEntry[11];
-        printf("attr = %d\n", attr);
         if((attr & 0x08) == 0x08 && (attr & 0xF5) == 0)
         {
             strncpy(diskLabel, rootEntry, 8);
             diskLabel[8] = '\0';
-            printf("i = %d\n",i);
             break;
         }
         i++;
