@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 void ToUpper(char* string)
 {
     int i = 0;
@@ -43,7 +44,11 @@ int GetInfoFromRoot(char* fileName,int* clusterNumer,int* fileSize, FILE* filept
     {
         fread(rootEntry,1 ,32,fileptr);
         GetFileName(rootFileName, rootEntry);
-        //if(strcomp(fileName))
+        if(!strcmp(fileName, rootFileName))
+        {
+            
+            return 1;
+        }
         i++;
     }
     return  -1;
