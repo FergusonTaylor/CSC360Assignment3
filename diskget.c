@@ -33,10 +33,35 @@ void GetFileName(char* fileName, char* rootEntry)
     fileName[i+j+1] = '\0';
     return;
 }
-int GetInfoFromRoot(char* fileName,int* clusterNumer,int* fileSize, FILE* fileptr)
+unsigned int LittleEndianBytesToInt(unsigned char* bytes, int length)
+{
+    unsigned int powerOf2 = 1;
+    unsigned int finalInt = 0;
+    int i;
+    for( i = 0; i < length; i++)
+    {
+        finalInt += powerOf2*bytes[i];
+        powerOf2 = powerOf2*256;
+    }
+    return finalInt;
+}
+int GetFileSize( char* rootEntry)
+{
+    int fileSize;
+    unsigned char fileSizeBytes[4];
+    int i;
+    for(i = 0 ; i < 4; i++)
+    {
+        fileSizeBytes[i] = rootEntry[28 +i];
+    }
+    fileSize = LittleEndianBytesToInt(fileSizeBytes,4);
+    return fileSize;
+}
+int GetInfoFromRoot(char* fileName,int* clusterNumber,int* fileSize, FILE* fileptr)
 {
     char rootEntry[32];
     char rootFileName[16];
+    char clusterNumberBytes[2];
     //put fileptr to root
     fseek(fileptr, 512*19,SEEK_SET);
     int i = 0;
@@ -46,7 +71,10 @@ int GetInfoFromRoot(char* fileName,int* clusterNumer,int* fileSize, FILE* filept
         GetFileName(rootFileName, rootEntry);
         if(!strcmp(fileName, rootFileName))
         {
-            
+            clusterNumberBytes[0] = rootEntry[26];
+            clusterNumberBytes[1] = rootEntry[27];
+            *clusterNumber = LittleEndianBytesToInt(clusterNumberBytes,2);
+            *fileSize = GetFileSize(rootEntry);
             return 1;
         }
         i++;
@@ -61,7 +89,7 @@ int main(int argc, char *argv[])
         return;
     }
     char fileName[16];
-    int clusterNumer;
+    int clusterNumber;
     int fileSize;
     strcpy(fileName, argv[2]); 
     ToUpper(fileName);
@@ -75,9 +103,19 @@ int main(int argc, char *argv[])
         printf("failed to open file \n");
         return -1;
     }
-    if (GetInfoFromRoot(fileName, &clusterNumer,&fileSize,fileptr) == -1)
+    if (GetInfoFromRoot(fileName, &clusterNumber,&fileSize,fileptr) == -1)
     {
-        printf("could not find file %s\n",fileName);
+        printf("File not found\n");
+    }
+    while(fileSize !=0)
+    {
+        if(fileSize < 512)
+        {
+
+            fileSize = 0;
+        }
+        
+        fileSize - 512;
     }
     fclose(fileptr);
 }
