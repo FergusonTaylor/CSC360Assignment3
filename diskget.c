@@ -44,10 +44,26 @@ void GetClusterInformation(int clusterNumber, char* buffer, FILE* fileptr)
     fseek(fileptr,clusterNumber*512,SEEK_SET);
     fread(buffer, 1, 512,fileptr);
 }
-int FindNextCluster(FILE* fileptr )
+int FindNextCluster(FILE* fileptr, int previousCluster)
 {
-    
-    return -1;
+    int FATIndex = previousCluster - 31;
+    unsigned char twoFatEntries[3];
+    unsigned char fatEntry[2];
+    //get to start of FAT Table
+    fseek(fileptr, 512+(3*(FATIndex/2)) ,SEEK_SET);
+    fread(twoFatEntries,1,3,fileptr);
+    if(FATIndex % 2)
+    {
+        fatEntry[0] = (twoFatEntries[1] >> 4) | (twoFatEntries[2] << 4);
+        fatEntry[1] = (twoFatEntries[2] >> 4);
+    }
+    else
+    {
+        fatEntry[0] = twoFatEntries[0];
+        fatEntry[1] = (twoFatEntries[1] & 0x0F);
+    }
+    int nextCluster = LittleEndianBytesToInt(fatEntry,2)+31;
+    return nextCluster;
 }
 int main(int argc, char *argv[])
 {
@@ -65,7 +81,6 @@ int main(int argc, char *argv[])
     strcpy(fileName, argv[2]); 
     strcpy(upperFileName, argv[2]); 
     ToUpper(upperFileName);
-    printf("%s\n",upperFileName);
 
     FILE* fileptr;
 
@@ -79,7 +94,6 @@ int main(int argc, char *argv[])
     {
         printf("File not found\n");
     }
-    printf("first clusterNumber is: %d\n",clusterNumber);
     FILE* toWriteptr = fopen(fileName, "w");
     
     while(fileSize !=0)
@@ -94,8 +108,8 @@ int main(int argc, char *argv[])
         else
         {
             fwrite(buffer, 1, 512, toWriteptr);
-            clusterNumber = FindNextCluster(fileptr); 
-            fileSize - 512;
+            clusterNumber = FindNextCluster(fileptr, clusterNumber); 
+            fileSize = fileSize - 512;
         }
     }
     fclose(toWriteptr);
