@@ -1,22 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "FileSysUtil.h"
 void ReadXBytes(int offset,int numberToRead, FILE* fileptr, char* readInto)
 {
     fseek(fileptr, offset, SEEK_SET);
     fread(readInto,1 ,numberToRead,fileptr);
-}
-unsigned int LittleEndianBytesToInt(unsigned char* bytes, int length)
-{
-    unsigned int powerOf2 = 1;
-    unsigned int finalInt = 0;
-    int i;
-    for( i = 0; i < length; i++)
-    {
-        finalInt += powerOf2*bytes[i];
-        powerOf2 = powerOf2*256;
-    }
-    return finalInt;
 }
 int CountFreeSectors(FILE* fileptr, int numberOfSectors)
 {

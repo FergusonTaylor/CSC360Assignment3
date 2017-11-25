@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <ctype.h>
+#include "FileSysUtil.h"
 void ToUpper(char* string)
 {
     int i = 0;
@@ -12,51 +13,7 @@ void ToUpper(char* string)
     }
     return;
 }
-void GetFileName(char* fileName, char* rootEntry)
-{
-    char fileExtension[4];
-    int i = 0;
-    while( i < 8 && rootEntry[i] != ' ' )
-    {
-        fileName[i] = rootEntry[i];
-        i++;
-    }
-    fileName[i] = '.';
-    fileName[i+1] = '\0';
-    int j = 0;
-    while( j < 3 && rootEntry[j+8] != ' ' )
-    {
-        fileExtension[j] = rootEntry[j+8];
-        j++;
-    }
-    strcat(fileName, fileExtension);
-    fileName[i+j+1] = '\0';
-    return;
-}
-unsigned int LittleEndianBytesToInt(unsigned char* bytes, int length)
-{
-    unsigned int powerOf2 = 1;
-    unsigned int finalInt = 0;
-    int i;
-    for( i = 0; i < length; i++)
-    {
-        finalInt += powerOf2*bytes[i];
-        powerOf2 = powerOf2*256;
-    }
-    return finalInt;
-}
-int GetFileSize( char* rootEntry)
-{
-    int fileSize;
-    unsigned char fileSizeBytes[4];
-    int i;
-    for(i = 0 ; i < 4; i++)
-    {
-        fileSizeBytes[i] = rootEntry[28 +i];
-    }
-    fileSize = LittleEndianBytesToInt(fileSizeBytes,4);
-    return fileSize;
-}
+
 int GetInfoFromRoot(char* fileName,int* clusterNumber,int* fileSize, FILE* fileptr)
 {
     char rootEntry[32];
@@ -73,7 +30,7 @@ int GetInfoFromRoot(char* fileName,int* clusterNumber,int* fileSize, FILE* filep
         {
             clusterNumberBytes[0] = rootEntry[26];
             clusterNumberBytes[1] = rootEntry[27];
-            *clusterNumber = LittleEndianBytesToInt(clusterNumberBytes,2);
+            *clusterNumber = LittleEndianBytesToInt(clusterNumberBytes,2) +31;
             *fileSize = GetFileSize(rootEntry);
             return 1;
         }
@@ -81,19 +38,34 @@ int GetInfoFromRoot(char* fileName,int* clusterNumber,int* fileSize, FILE* filep
     }
     return  -1;
 }
+
+void GetClusterInformation(int clusterNumber, char* buffer, FILE* fileptr)
+{
+    fseek(fileptr,clusterNumber*512,SEEK_SET);
+    fread(buffer, 1, 512,fileptr);
+}
+int FindNextCluster(FILE* fileptr )
+{
+    
+    return -1;
+}
 int main(int argc, char *argv[])
 {
     if(argc != 3)
     {
         printf("we want 3 arguments not: %d arguments", argc);
-        return;
+        return -1;
     }
     char fileName[16];
+    char upperFileName[16];
+    char buffer[512];
     int clusterNumber;
     int fileSize;
+
     strcpy(fileName, argv[2]); 
-    ToUpper(fileName);
-    printf("%s\n",fileName);
+    strcpy(upperFileName, argv[2]); 
+    ToUpper(upperFileName);
+    printf("%s\n",upperFileName);
 
     FILE* fileptr;
 
@@ -103,19 +75,29 @@ int main(int argc, char *argv[])
         printf("failed to open file \n");
         return -1;
     }
-    if (GetInfoFromRoot(fileName, &clusterNumber,&fileSize,fileptr) == -1)
+    if (GetInfoFromRoot(upperFileName, &clusterNumber,&fileSize,fileptr) == -1)
     {
         printf("File not found\n");
     }
+    printf("first clusterNumber is: %d\n",clusterNumber);
+    FILE* toWriteptr = fopen(fileName, "w");
+    
     while(fileSize !=0)
     {
+        GetClusterInformation(clusterNumber,buffer,fileptr);
+        
         if(fileSize < 512)
         {
-
+            fwrite(buffer, 1, fileSize, toWriteptr);
             fileSize = 0;
         }
-        
-        fileSize - 512;
+        else
+        {
+            fwrite(buffer, 1, 512, toWriteptr);
+            clusterNumber = FindNextCluster(fileptr); 
+            fileSize - 512;
+        }
     }
+    fclose(toWriteptr);
     fclose(fileptr);
 }
